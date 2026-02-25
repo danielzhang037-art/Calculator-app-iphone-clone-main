@@ -59,6 +59,13 @@
         }
     }
 
+    function inputPercent() {
+        if (!currentValue.includes('%')) {
+            currentValue = currentValue + '%';
+            updateDisplay();
+        }
+    }
+
     function clearAll() {
         firstValue = null;
         operator = null;
@@ -69,10 +76,11 @@
     }
     
     function calculate(expression) {
+        
         // replace display symbols just in case
         try {
-            // expression is an array joined with real operators + - * /
-            const result = Function('"use strict"; return (' + expression + ')')();
+            const normalized = expression.replace(/(\d+\.?\d*)%/g, '($1/100)');
+            const result = Function('"use strict"; return (' + normalized + ')')();
             if (!Number.isFinite(result)) return 'Error';
             const asStr = String(result);
             if (asStr.length > MAX_LENGTH) {
@@ -147,6 +155,9 @@
                 case 'equals':
                     handleOperator('=');
                     break;
+                case 'percent':
+                    inputPercent();
+                    break;
                 default:
                     break;
             }
@@ -172,6 +183,11 @@
         }
         if (['+', '-', '*', '/'].includes(e.key)) {
             handleOperator(e.key);
+            e.preventDefault();
+            return;
+        }
+        if (e.key === '%') {
+            inputPercent();
             e.preventDefault();
             return;
         }
