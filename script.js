@@ -6,24 +6,17 @@
     let operator = null;   // holds the current operator
     let waitingForSecond = false; // whether the next digit starts a new number
     let currentValue = '0'; // string representation of the displayed/entered number
+    let displayEquation = '';
+    let expressionParts = [];
 
     const MAX_LENGTH = 12;
 
     function updateDisplay() {
-        // trim and format display value
-        let toShow = currentValue;
-        if (toShow.length > MAX_LENGTH) {
-            // try to shorten by removing trailing zeros after decimal
-            if (toShow.indexOf('.') !== -1) {
-                // use Number to format in shorter scientific if needed
-                const num = Number(toShow);
-                toShow = num.toPrecision(MAX_LENGTH - 1).replace(/\.\w+$/,'');
-            } else {
-                // use exponential for very large integers
-                toShow = Number(toShow).toExponential(6);
-            }
+        if (waitingForSecond) {
+        display.value = displayEquation;
+        } else {
+            display.value = displayEquation + currentValue;
         }
-        display.value = toShow;
     }
 
     function inputDigit(digit) {
@@ -40,6 +33,7 @@
                 }
             }
         }
+
         updateDisplay();
     }
 
@@ -47,12 +41,21 @@
         if (waitingForSecond) {
             currentValue = '0.';
             waitingForSecond = false;
-            updateDisplay();
             return;
         }
         if (!currentValue.includes('.')) {
             currentValue += '.';
-            updateDisplay();
+        }
+        updateDisplay();
+    }
+
+    function operatorSymbol(op) {
+        switch(op) {
+            case '+': return '+';
+            case '-': return '-';
+            case '*': return '×';
+            case '/': return '÷';
+            default: return op;
         }
     }
 
@@ -61,62 +64,57 @@
         operator = null;
         waitingForSecond = false;
         currentValue = '0';
+        displayEquation = '';
         updateDisplay();
     }
-
-    function calculate(a, b, op) {
-        const x = Number(a);
-        const y = Number(b);
-        let res = 0;
-        switch (op) {
-            case '+':
-                res = x + y;
-                break;
-            case '-':
-                res = x - y;
-                break;
-            case '*':
-                res = x * y;
-                break;
-            case '/':
-                if (y === 0) return 'Error';
-                res = x / y;
-                break;
-            default:
-                return b;
+    
+    function calculate(expression) {
+        // replace display symbols just in case
+        try {
+            // expression is an array joined with real operators + - * /
+            const result = Function('"use strict"; return (' + expression + ')')();
+            if (!Number.isFinite(result)) return 'Error';
+            const asStr = String(result);
+            if (asStr.length > MAX_LENGTH) {
+                const p = Math.max(6, MAX_LENGTH - 2);
+                return Number(result).toPrecision(p).replace(/(?:\.0+|(?<=\.\d*?)0+)$/, '');
+            }
+            return String(result);
+        } catch {
+            return 'Error';
         }
-        // avoid floating point artifacts
-        if (!Number.isFinite(res)) return 'Error';
-        // format to reasonable length
-        const asStr = String(res);
-        if (asStr.length > MAX_LENGTH) {
-            // use toPrecision while trimming
-            const p = Math.max(6, MAX_LENGTH - 2);
-            return Number(res).toPrecision(p).replace(/(?:\.0+|(?<=\.\d*?)0+)$/,'');
-        }
-        return String(res);
     }
 
     function handleOperator(nextOperator) {
-        if (!operator && !waitingForSecond) {
-            // first time operator pressed
-            firstValue = currentValue;
+        if (nextOperator === '=') {
+                if (expressionParts.length > 0) {
+                    // commit the current value and evaluate
+                    const fullExpression = [...expressionParts, currentValue].join('');
+                    const result = calculate(fullExpression);
+                    displayEquation = '';
+                    expressionParts = [];
+                    currentValue = String(result);
+                    operator = null;
+                    waitingForSecond = false;
+                    updateDisplay();
+                }
+                return;
+        } 
+    
+        if (operator && waitingForSecond) {
+            // just swap the operator, update last char of displayEquation
             operator = nextOperator;
-            waitingForSecond = true;
-        } else if (operator && waitingForSecond) {
-            // change operator before entering second value
-            operator = nextOperator;
+            expressionParts[expressionParts.length - 1] = nextOperator;
+            displayEquation = displayEquation.slice(0, -1) + operatorSymbol(nextOperator);
         } else {
-            // we have operator and a second value entered, compute
-            const result = calculate(firstValue, currentValue, operator);
-            currentValue = result;
-            updateDisplay();
-
-            // prepare for next operation
-            firstValue = currentValue === 'Error' ? null : currentValue;
-            operator = nextOperator === '=' ? null : nextOperator;
+            // commit currentValue and operator into expressionParts
+            expressionParts.push(currentValue, nextOperator);
+            displayEquation = displayEquation + currentValue + operatorSymbol(nextOperator);
+            operator = nextOperator;
             waitingForSecond = true;
         }
+
+        updateDisplay();
     }
 
     // attach button listeners
@@ -147,12 +145,7 @@
                     handleOperator('/');
                     break;
                 case 'equals':
-                    // treat equals as an operator that triggers calculation
-                    if (operator) {
-                        handleOperator('=');
-                        operator = null;
-                        waitingForSecond = true;
-                    }
+                    handleOperator('=');
                     break;
                 default:
                     break;
@@ -183,9 +176,7 @@
             return;
         }
         if (e.key === 'Enter' || e.key === '=') {
-            if (operator) {
-                handleOperator('=');
-            }
+            handleOperator('=');
             e.preventDefault();
             return;
         }
