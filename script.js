@@ -32,6 +32,13 @@
         if (waitingForSecond) {
             currentValue = digit;
             waitingForSecond = false;
+        } else if (currentValue === 'π' || currentValue === 'e') {
+            // auto-insert multiply after a constant
+            expressionParts.push('(' + currentValue + ')', '*');
+            displayEquation = displayEquation + currentValue + '×';
+            operator = '*';
+            currentValue = digit;
+            waitingForSecond = false;
         } else {
             // avoid multiple leading zeros
             if (currentValue === '0') {
@@ -41,6 +48,7 @@
                     currentValue += digit;
                 }
             }
+        
         }
 
         updateDisplay();
@@ -102,6 +110,23 @@
         updateDisplay();
     }
 
+    function inputConstant(value, symbol) {
+        if (waitingForSecond) {
+            currentValue = symbol;
+            waitingForSecond = false;
+        } else if (currentValue !== '0') {
+            // auto-insert multiply if a number is already entered
+            expressionParts.push('(' + currentValue + ')', '*');
+            displayEquation = displayEquation + currentValue + '×';
+            operator = '*';
+            currentValue = symbol;
+            waitingForSecond = false;
+        } else {
+            currentValue = symbol;
+        }
+        updateDisplay();
+    }
+
     function clearAll() {
         firstValue = null;
         operator = null;
@@ -115,7 +140,10 @@
         
         // replace display symbols just in case
         try {
-            const normalized = expression.replace(/(\d+\.?\d*)%/g, '($1/100)');
+            const normalized = expression
+            .replace(/π/g, Math.PI)
+            .replace(/\be\b/g, Math.E)
+            .replace(/(\d+\.?\d*)%/g, '($1/100)');
             const result = Function('"use strict"; return (' + normalized + ')')();
             if (!Number.isFinite(result)) return 'Error';
             const asStr = String(result);
@@ -170,6 +198,12 @@
                 return;
             }
             switch (id) {
+                case 'pi':
+                    inputConstant(Math.PI.toString(), 'π');
+                    break;
+                case 'e':
+                    inputConstant(Math.E.toString(), 'e');
+                    break;
                 case 'decimal':
                     inputDecimal();
                     break;
@@ -243,11 +277,21 @@
             e.preventDefault();
             return;
         }
+        if (e.key === 'p') {
+            inputConstant(Math.PI.toString(), 'π');
+            e.preventDefault();
+            return;
+        }
+        if (e.key === 'e') {
+            inputConstant(Math.E.toString(), 'e');
+            e.preventDefault();
+            return;
+        }
     });
 
     // initialize
     updateDisplay();
-    
+
     document.getElementById('sci-toggle').addEventListener('click', () => {
         const sci = document.getElementById('sci-buttons');
         const isVisible = sci.style.display !== 'none';
