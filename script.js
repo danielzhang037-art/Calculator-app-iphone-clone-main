@@ -66,6 +66,31 @@
         }
     }
 
+    function inputBackspace() {
+        if (waitingForSecond) {
+            // remove the last operator
+            expressionParts.pop();
+            displayEquation = displayEquation.slice(0, -1);
+            operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
+            waitingForSecond = false;
+            currentValue = expressionParts.pop() || '0';
+            displayEquation = displayEquation.slice(0, -(currentValue.length));
+        } else if (currentValue.length > 1) {
+            // trim last character
+            currentValue = currentValue.slice(0, -1);
+        } else if (expressionParts.length > 0) {
+            // already 0, step back into the expression
+            expressionParts.pop(); // remove operator
+            displayEquation = displayEquation.slice(0, -1);
+            operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
+            currentValue = expressionParts.pop() || '0';
+            displayEquation = displayEquation.slice(0, -(currentValue.length));
+        } else {
+            currentValue = '0'
+        }
+        updateDisplay();
+    }
+
     function clearAll() {
         firstValue = null;
         operator = null;
@@ -158,6 +183,9 @@
                 case 'percent':
                     inputPercent();
                     break;
+                case 'backspace':
+                    inputBackspace();
+                    break;
                 default:
                     break;
             }
@@ -188,6 +216,11 @@
         }
         if (e.key === '%') {
             inputPercent();
+            e.preventDefault();
+            return;
+        }
+        if (e.key === 'Backspace') {
+            inputBackspace();
             e.preventDefault();
             return;
         }
