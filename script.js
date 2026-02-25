@@ -19,6 +19,15 @@
         }
     }
 
+    function toggleSign() {
+        if (currentValue.startsWith('-')) {
+            currentValue = currentValue.slice(1);
+        } else if (currentValue !== '0') {
+            currentValue = '-' + currentValue;
+        }
+        updateDisplay();
+    }
+
     function inputDigit(digit) {
         if (waitingForSecond) {
             currentValue = digit;
@@ -73,7 +82,8 @@
             displayEquation = displayEquation.slice(0, -1);
             operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
             waitingForSecond = false;
-            currentValue = expressionParts.pop() || '0';
+            const popped = expressionParts.pop() || '0';
+            currentValue = popped.replace(/^\(|\)$/g, '');
             displayEquation = displayEquation.slice(0, -(currentValue.length));
         } else if (currentValue.length > 1) {
             // trim last character
@@ -83,7 +93,8 @@
             expressionParts.pop(); // remove operator
             displayEquation = displayEquation.slice(0, -1);
             operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
-            currentValue = expressionParts.pop() || '0';
+            const popped = expressionParts.pop() || '0';
+            currentValue = popped.replace(/^\(|\)$/g, '');
             displayEquation = displayEquation.slice(0, -(currentValue.length));
         } else {
             currentValue = '0'
@@ -120,28 +131,28 @@
 
     function handleOperator(nextOperator) {
         if (nextOperator === '=') {
-                if (expressionParts.length > 0) {
-                    // commit the current value and evaluate
-                    const fullExpression = [...expressionParts, currentValue].join('');
-                    const result = calculate(fullExpression);
-                    displayEquation = '';
-                    expressionParts = [];
-                    currentValue = String(result);
-                    operator = null;
-                    waitingForSecond = false;
-                    updateDisplay();
-                }
-                return;
-        } 
-    
+            if (expressionParts.length > 0) {
+                const lastValue = '(' + currentValue + ')';
+                const fullExpression = [...expressionParts, lastValue].join('');
+                const result = calculate(fullExpression);
+                displayEquation = '';
+                expressionParts = [];
+                currentValue = String(result);
+                operator = null;
+                waitingForSecond = false;
+                updateDisplay();
+            }
+            return;
+        }
+
         if (operator && waitingForSecond) {
-            // just swap the operator, update last char of displayEquation
+            // swap operator
             operator = nextOperator;
             expressionParts[expressionParts.length - 1] = nextOperator;
             displayEquation = displayEquation.slice(0, -1) + operatorSymbol(nextOperator);
         } else {
-            // commit currentValue and operator into expressionParts
-            expressionParts.push(currentValue, nextOperator);
+            const valueToCommit = '(' + currentValue + ')';
+            expressionParts.push(valueToCommit, nextOperator);
             displayEquation = displayEquation + currentValue + operatorSymbol(nextOperator);
             operator = nextOperator;
             waitingForSecond = true;
@@ -185,6 +196,9 @@
                     break;
                 case 'backspace':
                     inputBackspace();
+                    break;
+                case 'toggle-sign':
+                    toggleSign();
                     break;
                 default:
                     break;
