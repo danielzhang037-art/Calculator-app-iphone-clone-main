@@ -247,5 +247,11 @@
 
     // initialize
     updateDisplay();
-
+    
+    document.getElementById('sci-toggle').addEventListener('click', () => {
+        const sci = document.getElementById('sci-buttons');
+        const isVisible = sci.style.display !== 'none';
+        sci.style.display = isVisible ? 'none' : 'grid';
+        document.getElementById('sci-toggle').textContent = isVisible ? 'Scientific' : 'Basic';
+    });
 })();
