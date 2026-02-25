@@ -9,27 +9,62 @@
 <body>
     <div class="calculator">
         <input type="text" id="display" disabled>
-        <div class="buttons">
-            <button class="btn" id="backspace">⌫</button>
-            <button class="btn" id="clear">C</button>
-            <button class="btn" id="percent">%</button>
-            <button class="btn" id="divide">÷</button>
-            <button class="btn" id="7">7</button>
-            <button class="btn" id="8">8</button>
-            <button class="btn" id="9">9</button>
-            <button class="btn" id="multiply">×</button>
-            <button class="btn" id="4">4</button>
-            <button class="btn" id="5">5</button>
-            <button class="btn" id="6">6</button>
-            <button class="btn" id="subtract">-</button>
-            <button class="btn" id="1">1</button>
-            <button class="btn" id="2">2</button>
-            <button class="btn" id="3">3</button>
-            <button class="btn" id="add">+</button>
-            <button class="btn" id="toggle-sign">+/-</button>
-            <button class="btn" id="0">0</button>
-            <button class="btn" id="decimal">.</button>
-            <button class="btn" id="equals">=</button>
+        <button id="sci-toggle">Scientific</button>
+        <div class="calculator-body">
+            <div class="sci-buttons" id="sci-buttons">
+                <button class="btn sci" id="open-paren">(</button>
+                <button class="btn sci" id="close-paren">)</button>
+                <button class="btn sci" id="mc">mc</button>
+                <button class="btn sci" id="mplus">m+</button>
+                <button class="btn sci" id="mminus">m-</button>
+                <button class="btn sci" id="mr">mr</button>
+                <button class="btn sci">2nd</button>
+                <button class="btn sci" id="sq">x²</button>
+                <button class="btn sci" id="cube">x³</button>
+                <button class="btn sci" id="pow">xʸ</button>
+                <button class="btn sci" id="ex">eˣ</button>
+                <button class="btn sci" id="tenx">10ˣ</button>
+                <button class="btn sci" id="inv">¹/ₓ</button>
+                <button class="btn sci" id="sqrt">²√x</button>
+                <button class="btn sci" id="cbrt">³√x</button>
+                <button class="btn sci" id="yrt">ʸ√x</button>
+                <button class="btn sci" id="ln">ln</button>
+                <button class="btn sci" id="log">log₁₀</button>
+                <button class="btn sci" id="fact">x!</button>
+                <button class="btn sci" id="sin">sin</button>
+                <button class="btn sci" id="cos">cos</button>
+                <button class="btn sci" id="tan">tan</button>
+                <button class="btn sci" id="e">e</button>
+                <button class="btn sci" id="EE">EE</button>
+                <button class="btn sci" id="rand">Rand</button>
+                <button class="btn sci" id="sinh">sinh</button>
+                <button class="btn sci" id="cosh">cosh</button>
+                <button class="btn sci" id="tanh">tanh</button>
+                <button class="btn sci" id="pi">π</button>
+                <button class="btn sci" id="rad">Rad</button>
+            </div>
+            <div class="buttons">
+                <button class="btn" id="backspace">⌫</button>
+                <button class="btn" id="clear">C</button>
+                <button class="btn" id="percent">%</button>
+                <button class="btn" id="divide">÷</button>
+                <button class="btn" id="7">7</button>
+                <button class="btn" id="8">8</button>
+                <button class="btn" id="9">9</button>
+                <button class="btn" id="multiply">×</button>
+                <button class="btn" id="4">4</button>
+                <button class="btn" id="5">5</button>
+                <button class="btn" id="6">6</button>
+                <button class="btn" id="subtract">-</button>
+                <button class="btn" id="1">1</button>
+                <button class="btn" id="2">2</button>
+                <button class="btn" id="3">3</button>
+                <button class="btn" id="add">+</button>
+                <button class="btn" id="toggle-sign">+/-</button>
+                <button class="btn" id="0">0</button>
+                <button class="btn" id="decimal">.</button>
+                <button class="btn" id="equals">=</button>
+            </div>
         </div>
     </div>
     <script src="script.js"></script>
