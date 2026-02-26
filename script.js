@@ -35,6 +35,7 @@
         if (waitingForSecond) {
             currentValue = digit;
             waitingForSecond = false;
+            
         } else if (currentValue === 'π' || currentValue === 'e') {
             expressionParts.push('(' + currentValue + ')', '*');
             displayEquation = displayEquation + currentValue + '×';
@@ -85,7 +86,12 @@
     }
 
     function inputBackspace() {
-        if (waitingForSecond) {
+        if(display.value === 'Error'){
+            clearAll();
+            return;
+        }
+        else if (waitingForSecond) {
+            // remove the last operator
             expressionParts.pop();
             displayEquation = displayEquation.slice(0, -1);
             operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
@@ -255,6 +261,7 @@
                 case 'e':
                     inputConstant(Math.E.toString(), 'e');
                     break;
+
                 case 'decimal':
                     inputDecimal();
                     break;
