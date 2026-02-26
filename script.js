@@ -2,21 +2,24 @@
     const display = document.getElementById('display');
     const buttons = Array.from(document.querySelectorAll('.btn'));
 
-    let firstValue = null; // holds the previous value
-    let operator = null;   // holds the current operator
-    let waitingForSecond = false; // whether the next digit starts a new number
-    let currentValue = '0'; // string representation of the displayed/entered number
+    let firstValue = null;
+    let operator = null;
+    let waitingForSecond = false;
+    let currentValue = '0';
     let displayEquation = '';
     let expressionParts = [];
-
+    let isRadians = false;
     const MAX_LENGTH = 12;
 
     function updateDisplay() {
-        if (waitingForSecond) {
-        display.value = displayEquation;
-        } else {
-            display.value = displayEquation + currentValue;
-        }
+        const toDisplay = (displayEquation + (waitingForSecond ? '' : currentValue))
+            .replace(/\*/g, '×')
+            .replace(/\//g, '÷');
+        display.value = toDisplay;
+    }
+
+    function endsWithOperator(str) {
+        return /[+\-*/]$/.test(str);
     }
 
     function toggleSign() {
@@ -33,24 +36,22 @@
             currentValue = digit;
             waitingForSecond = false;
         } else if (currentValue === 'π' || currentValue === 'e') {
-            // auto-insert multiply after a constant
             expressionParts.push('(' + currentValue + ')', '*');
             displayEquation = displayEquation + currentValue + '×';
             operator = '*';
             currentValue = digit;
             waitingForSecond = false;
+        } else if (endsWithOperator(currentValue) || currentValue.endsWith('(')) {
+            currentValue += digit;
         } else {
-            // avoid multiple leading zeros
             if (currentValue === '0') {
                 currentValue = digit;
             } else {
-                if (currentValue.length < 50) { // soft cap to avoid runaway growth
+                if (currentValue.length < 50) {
                     currentValue += digit;
                 }
             }
-        
         }
-
         updateDisplay();
     }
 
@@ -85,7 +86,6 @@
 
     function inputBackspace() {
         if (waitingForSecond) {
-            // remove the last operator
             expressionParts.pop();
             displayEquation = displayEquation.slice(0, -1);
             operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
@@ -94,18 +94,16 @@
             currentValue = popped.replace(/^\(|\)$/g, '');
             displayEquation = displayEquation.slice(0, -(currentValue.length));
         } else if (currentValue.length > 1) {
-            // trim last character
             currentValue = currentValue.slice(0, -1);
         } else if (expressionParts.length > 0) {
-            // already 0, step back into the expression
-            expressionParts.pop(); // remove operator
+            expressionParts.pop();
             displayEquation = displayEquation.slice(0, -1);
             operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
             const popped = expressionParts.pop() || '0';
             currentValue = popped.replace(/^\(|\)$/g, '');
             displayEquation = displayEquation.slice(0, -(currentValue.length));
         } else {
-            currentValue = '0'
+            currentValue = '0';
         }
         updateDisplay();
     }
@@ -114,15 +112,43 @@
         if (waitingForSecond) {
             currentValue = symbol;
             waitingForSecond = false;
-        } else if (currentValue !== '0') {
-            // auto-insert multiply if a number is already entered
+        } else if (currentValue === '0') {
+            currentValue = symbol;
+        } else if (currentValue.endsWith('(') || endsWithOperator(currentValue)) {
+            currentValue += symbol;
+        } else {
             expressionParts.push('(' + currentValue + ')', '*');
             displayEquation = displayEquation + currentValue + '×';
             operator = '*';
             currentValue = symbol;
             waitingForSecond = false;
+        }
+        updateDisplay();
+    }
+
+    function inputTrig(func) {
+        if (waitingForSecond) {
+            currentValue = func + '(';
+            waitingForSecond = false;
+        } else if (currentValue === '0') {
+            currentValue = func + '(';
+        } else if (currentValue.endsWith('(') || endsWithOperator(currentValue)) {
+            currentValue += func + '(';
         } else {
-            currentValue = symbol;
+            expressionParts.push('(' + currentValue + ')', '*');
+            displayEquation = displayEquation + currentValue + '×';
+            operator = '*';
+            currentValue = func + '(';
+            waitingForSecond = false;
+        }
+        updateDisplay();
+    }
+
+    function inputParen(paren) {
+        if (currentValue === '0' && paren === '(') {
+            currentValue = '(';
+        } else {
+            currentValue += paren;
         }
         updateDisplay();
     }
@@ -133,33 +159,71 @@
         waitingForSecond = false;
         currentValue = '0';
         displayEquation = '';
+        expressionParts = [];
         updateDisplay();
     }
-    
+
     function calculate(expression) {
-        
-        // replace display symbols just in case
         try {
-            const normalized = expression
-            .replace(/π/g, Math.PI)
-            .replace(/\be\b/g, Math.E)
-            .replace(/(\d+\.?\d*)%/g, '($1/100)');
-            const result = Function('"use strict"; return (' + normalized + ')')();
+            const containsConstant = /π|(?<![a-zA-Z])e(?![a-zA-Z])/.test(expression);
+            const useRadians = isRadians || containsConstant;
+
+            // First, handle percentages
+            let normalized = expression.replace(/(\d+\.?\d*)%/g, '($1/100)');
+            
+            // Replace constants with their numeric values (wrap in parentheses to preserve order)
+            normalized = normalized
+                .replace(/π/g, `(${Math.PI})`)
+                .replace(/(?<![a-zA-Z])e(?![a-zA-Z])/g, `(${Math.E})`);
+            
+            // Handle trig functions - make sure we capture the entire argument
+            if (useRadians) {
+                // For radians mode, just use Math.sin, Math.cos, Math.tan
+                normalized = normalized
+                    .replace(/sin\(/g, 'Math.sin(')
+                    .replace(/cos\(/g, 'Math.cos(')
+                    .replace(/tan\(/g, 'Math.tan(');
+            } else {
+                // For degrees mode, convert to radians
+                normalized = normalized
+                    .replace(/sin\(([^)]+)\)/g, 'Math.sin((Math.PI/180)*($1))')
+                    .replace(/cos\(([^)]+)\)/g, 'Math.cos((Math.PI/180)*($1))')
+                    .replace(/tan\(([^)]+)\)/g, 'Math.tan((Math.PI/180)*($1))');
+            }
+
+            // Add implicit multiplication for cases like "2π" or "2e"
+            normalized = normalized.replace(/(\d+)\(/g, '$1*(');
+            normalized = normalized.replace(/\)(\d+)/g, ')*$1');
+            normalized = normalized.replace(/\)(π|e)/g, ')*$1');
+            normalized = normalized.replace(/(π|e)(\d+)/g, '$1*$2');
+
+            let result = Function('"use strict"; return (' + normalized + ')')();
+            
             if (!Number.isFinite(result)) return 'Error';
+            if (Math.abs(result) > 1e15) return 'Error';
+            
+            // Handle floating point precision
+            if (Math.abs(result - Math.round(result)) < 1e-9) {
+                result = Math.round(result);
+            } else {
+                result = parseFloat(result.toPrecision(10));
+            }
+            
             const asStr = String(result);
             if (asStr.length > MAX_LENGTH) {
                 const p = Math.max(6, MAX_LENGTH - 2);
                 return Number(result).toPrecision(p).replace(/(?:\.0+|(?<=\.\d*?)0+)$/, '');
             }
             return String(result);
-        } catch {
+        } catch (error) {
+            console.error('Calculation error:', error);
             return 'Error';
         }
     }
 
     function handleOperator(nextOperator) {
         if (nextOperator === '=') {
-            if (expressionParts.length > 0) {
+            if (expressionParts.length > 0 || currentValue !== '0') {
                 const lastValue = '(' + currentValue + ')';
                 const fullExpression = [...expressionParts, lastValue].join('');
                 const result = calculate(fullExpression);
@@ -173,8 +237,15 @@
             return;
         }
 
+        const openCount = (currentValue.match(/\(/g) || []).length;
+        const closeCount = (currentValue.match(/\)/g) || []).length;
+        if (openCount > closeCount) {
+            currentValue += nextOperator;
+            updateDisplay();
+            return;
+        }
+
         if (operator && waitingForSecond) {
-            // swap operator
             operator = nextOperator;
             expressionParts[expressionParts.length - 1] = nextOperator;
             displayEquation = displayEquation.slice(0, -1) + operatorSymbol(nextOperator);
@@ -234,6 +305,25 @@
                 case 'toggle-sign':
                     toggleSign();
                     break;
+                case 'sin':
+                    inputTrig('sin');
+                    break;
+                case 'cos':
+                    inputTrig('cos');
+                    break;
+                case 'tan':
+                    inputTrig('tan');
+                    break;
+                case 'open-paren':
+                    inputParen('(');
+                    break;
+                case 'close-paren':
+                    inputParen(')');
+                    break;
+                case 'rad':
+                    isRadians = !isRadians;
+                    document.getElementById('rad').textContent = isRadians ? 'Deg' : 'Rad';
+                    break;
                 default:
                     break;
             }
@@ -287,9 +377,20 @@
             e.preventDefault();
             return;
         }
+        if (e.key === '(') {
+            inputParen('(');
+            e.preventDefault();
+            return;
+        }
+        if (e.key === ')') {
+            inputParen(')');
+            e.preventDefault();
+            return;
+        }
     });
 
     // initialize
+    document.getElementById('rad').textContent = 'Rad';
     updateDisplay();
 
     document.getElementById('sci-toggle').addEventListener('click', () => {
