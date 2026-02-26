@@ -116,6 +116,9 @@
             currentValue = symbol;
         } else if (currentValue.endsWith('(') || endsWithOperator(currentValue)) {
             currentValue += symbol;
+        } else if (/\d$/.test(currentValue)) {
+            // ends with a digit — auto insert * before the constant
+            currentValue += '*' + symbol;
         } else {
             expressionParts.push('(' + currentValue + ')', '*');
             displayEquation = displayEquation + currentValue + '×';
@@ -165,50 +168,27 @@
 
     function calculate(expression) {
         try {
-            const containsConstant = /π|(?<![a-zA-Z])e(?![a-zA-Z])/.test(expression);
-            const useRadians = isRadians || containsConstant;
-
-            // First, handle percentages
-            let normalized = expression.replace(/(\d+\.?\d*)%/g, '($1/100)');
-            
-            // Replace constants with their numeric values (wrap in parentheses to preserve order)
-            normalized = normalized
+            const normalized = expression
+                .replace(/(\d+\.?\d*)%/g, '($1/100)')
                 .replace(/π/g, `(${Math.PI})`)
-                .replace(/(?<![a-zA-Z])e(?![a-zA-Z])/g, `(${Math.E})`);
-            
-            // Handle trig functions - make sure we capture the entire argument
-            if (useRadians) {
-                // For radians mode, just use Math.sin, Math.cos, Math.tan
-                normalized = normalized
-                    .replace(/sin\(/g, 'Math.sin(')
-                    .replace(/cos\(/g, 'Math.cos(')
-                    .replace(/tan\(/g, 'Math.tan(');
-            } else {
-                // For degrees mode, convert to radians
-                normalized = normalized
-                    .replace(/sin\(([^)]+)\)/g, 'Math.sin((Math.PI/180)*($1))')
-                    .replace(/cos\(([^)]+)\)/g, 'Math.cos((Math.PI/180)*($1))')
-                    .replace(/tan\(([^)]+)\)/g, 'Math.tan((Math.PI/180)*($1))');
-            }
+                .replace(/(?<![a-zA-Z])e(?![a-zA-Z])/g, `(${Math.E})`)
+                .replace(/sin\(/g, 'sin(')
+                .replace(/cos\(/g, 'cos(')
+                .replace(/tan\(/g, 'tan(');
 
-            // Add implicit multiplication for cases like "2π" or "2e"
-            normalized = normalized.replace(/(\d+)\(/g, '$1*(');
-            normalized = normalized.replace(/\)(\d+)/g, ')*$1');
-            normalized = normalized.replace(/\)(π|e)/g, ')*$1');
-            normalized = normalized.replace(/(π|e)(\d+)/g, '$1*$2');
+            const sinFn = isRadians ? Math.sin : (x) => Math.sin(x * Math.PI / 180);
+            const cosFn = isRadians ? Math.cos : (x) => Math.cos(x * Math.PI / 180);
+            const tanFn = isRadians ? Math.tan : (x) => Math.tan(x * Math.PI / 180);
 
-            let result = Function('"use strict"; return (' + normalized + ')')();
-            
+            let result = new Function('sin', 'cos', 'tan', `"use strict"; return (${normalized})`)(sinFn, cosFn, tanFn);
+
             if (!Number.isFinite(result)) return 'Error';
             if (Math.abs(result) > 1e15) return 'Error';
-            
-            // Handle floating point precision
             if (Math.abs(result - Math.round(result)) < 1e-9) {
                 result = Math.round(result);
             } else {
                 result = parseFloat(result.toPrecision(10));
             }
-            
             const asStr = String(result);
             if (asStr.length > MAX_LENGTH) {
                 const p = Math.max(6, MAX_LENGTH - 2);
