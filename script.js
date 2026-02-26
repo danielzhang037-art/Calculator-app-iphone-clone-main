@@ -32,6 +32,7 @@
         if (waitingForSecond) {
             currentValue = digit;
             waitingForSecond = false;
+            
         } else if (currentValue === 'π' || currentValue === 'e') {
             // auto-insert multiply after a constant
             expressionParts.push('(' + currentValue + ')', '*');
@@ -84,7 +85,11 @@
     }
 
     function inputBackspace() {
-        if (waitingForSecond) {
+        if(display.value === 'Error'){
+            clearAll();
+            return;
+        }
+        else if (waitingForSecond) {
             // remove the last operator
             expressionParts.pop();
             displayEquation = displayEquation.slice(0, -1);
@@ -204,6 +209,13 @@
                 case 'e':
                     inputConstant(Math.E.toString(), 'e');
                     break;
+                case 'open-paren':
+                    handleOperator('(');
+                    break;
+                case 'close-paren':
+                    handleOperator(')');
+                    break;
+
                 case 'decimal':
                     inputDecimal();
                     break;
