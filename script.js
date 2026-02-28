@@ -9,6 +9,7 @@
     let displayEquation = '';
     let expressionParts = [];
     let isRadians = false;
+    let parenOpen = false;
     const MAX_LENGTH = 12;
 
     function updateDisplay() {
@@ -90,8 +91,10 @@
             clearAll();
             return;
         }
+        
         else if (waitingForSecond) {
             // remove the last operator
+            
             expressionParts.pop();
             displayEquation = displayEquation.slice(0, -1);
             operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
@@ -100,6 +103,9 @@
             currentValue = popped.replace(/^\(|\)$/g, '');
             displayEquation = displayEquation.slice(0, -(currentValue.length));
         } else if (currentValue.length > 1) {
+            if(currentValue.slice(-1) === '('){
+                parenOpen = false;
+            }
             currentValue = currentValue.slice(0, -1);
         } else if (expressionParts.length > 0) {
             expressionParts.pop();
@@ -156,14 +162,20 @@
     function inputParen(paren) {
         if (currentValue === '0' && paren === '(') {
             currentValue = '(';
+            parenOpen = true;
         } 
-        if(paren === ')' && parenOpen !== true ){
+        if(paren === ')' && parenOpen === false ){
             return;
         }
         
         else if(parenOpen === false){
             currentValue += paren;
             parenOpen = true;
+        }
+
+        else if(parenOpen === true && paren === ')' ){
+            currentValue += paren;
+            parenOpen = false;
         }
         updateDisplay();
     }
@@ -175,6 +187,7 @@
         currentValue = '0';
         displayEquation = '';
         expressionParts = [];
+        parenOpen = false;
         updateDisplay();
     }
 
