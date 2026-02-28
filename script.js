@@ -227,7 +227,7 @@
         document.getElementById('second').style.backgroundColor = isSecond ? '#a0a0a0' : '';
         document.getElementById('ex').textContent = isSecond ? 'yˣ' : 'eˣ';
         document.getElementById('tenx').textContent = isSecond ? '2ˣ' : '10ˣ';
-        document.getElementById('ln').textContent = isSecond ? 'logᵧ' : 'ln';
+        document.getElementById('ln').innerHTML = isSecond ? 'log<sub>y</sub>' : 'ln';
         document.getElementById('log').textContent = isSecond ? 'log₂' : 'log₁₀';
         document.getElementById('sin').textContent = isSecond ? 'sin⁻¹' : 'sin';
         document.getElementById('cos').textContent = isSecond ? 'cos⁻¹' : 'cos';
