@@ -11,7 +11,7 @@
     let isRadians = false;
     const MAX_LENGTH = 12;
     let memory = null;
-
+    let isSecond = false;
 
     function updateDisplay() {
         const toDisplay = (displayEquation + (waitingForSecond ? '' : currentValue))
@@ -222,6 +222,21 @@
         updateDisplay();
     }
 
+    function toggleSecond() {
+        isSecond = !isSecond;
+        document.getElementById('second').style.backgroundColor = isSecond ? '#a0a0a0' : '';
+        document.getElementById('ex').textContent = isSecond ? 'yˣ' : 'eˣ';
+        document.getElementById('tenx').textContent = isSecond ? '2ˣ' : '10ˣ';
+        document.getElementById('ln').innerHTML = isSecond ? 'log<sub>y</sub>' : 'ln';
+        document.getElementById('log').textContent = isSecond ? 'log₂' : 'log₁₀';
+        document.getElementById('sin').textContent = isSecond ? 'sin⁻¹' : 'sin';
+        document.getElementById('cos').textContent = isSecond ? 'cos⁻¹' : 'cos';
+        document.getElementById('tan').textContent = isSecond ? 'tan⁻¹' : 'tan';
+        document.getElementById('sinh').textContent = isSecond ? 'sinh⁻¹' : 'sinh';
+        document.getElementById('cosh').textContent = isSecond ? 'cosh⁻¹' : 'cosh';
+        document.getElementById('tanh').textContent = isSecond ? 'tanh⁻¹' : 'tanh';
+    }
+
     function calculate(expression) {
         try {
             const normalized = expression
@@ -373,6 +388,9 @@
                     break;
                 case 'mr':
                     memoryRecall();
+                    break;
+                case 'second':
+                    toggleSecond();
                     break;
                 case 'rad':
                     isRadians = !isRadians;
