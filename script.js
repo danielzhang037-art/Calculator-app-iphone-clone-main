@@ -156,8 +156,14 @@
     function inputParen(paren) {
         if (currentValue === '0' && paren === '(') {
             currentValue = '(';
-        } else {
+        } 
+        if(paren === ')' && parenOpen !== true ){
+            return;
+        }
+        
+        else if(parenOpen === false){
             currentValue += paren;
+            parenOpen = true;
         }
         updateDisplay();
     }
