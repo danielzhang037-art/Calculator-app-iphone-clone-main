@@ -10,6 +10,8 @@
     let expressionParts = [];
     let isRadians = false;
     const MAX_LENGTH = 12;
+    let memory = null;
+
 
     function updateDisplay() {
         const toDisplay = (displayEquation + (waitingForSecond ? '' : currentValue))
@@ -156,6 +158,60 @@
         updateDisplay();
     }
 
+    function updateMemoryButton() {
+        const mrBtn = document.getElementById('mr');
+        mrBtn.style.backgroundColor = memory !== null ? '#a0a0a0' : '';
+    }
+
+    function memoryStore() {
+        // evaluate current expression first
+        const lastValue = '(' + currentValue + ')';
+        const fullExpression = [...expressionParts, lastValue].join('');
+        const evaluated = parseFloat(calculate(fullExpression)) || 0;
+        if (memory === null) {
+            memory = evaluated;
+        } else {
+            memory += evaluated;
+        }
+        updateMemoryButton();
+    }
+
+    function memorySubtract() {
+        // evaluate current expression first
+        const lastValue = '(' + currentValue + ')';
+        const fullExpression = [...expressionParts, lastValue].join('');
+        const evaluated = parseFloat(calculate(fullExpression)) || 0;
+        if (memory === null) {
+            memory = -evaluated;
+        } else {
+            memory -= evaluated;
+        }
+        updateMemoryButton();
+    }
+
+    function memoryClear() {
+        memory = null;
+        updateMemoryButton();
+    }
+
+    function memoryRecall() {
+        if (memory === null) return;
+        const memStr = String(memory);
+        if (currentValue === '0' && expressionParts.length === 0) {
+            // display is just 0 — replace with mr value
+            currentValue = memStr;
+            waitingForSecond = false;
+        } else if (waitingForSecond) {
+            // after an operator — start new number with mr value
+            currentValue = memStr;
+            waitingForSecond = false;
+        } else {
+            // mid expression — auto insert multiply
+            currentValue += '*' + memStr;
+        }
+        updateDisplay();
+    }
+
     function clearAll() {
         firstValue = null;
         operator = null;
@@ -204,8 +260,14 @@
     function handleOperator(nextOperator) {
         if (nextOperator === '=') {
             if (expressionParts.length > 0 || currentValue !== '0') {
-                const lastValue = '(' + currentValue + ')';
-                const fullExpression = [...expressionParts, lastValue].join('');
+                let fullExpression;
+                if (waitingForSecond) {
+                    // operator was pressed but no second number — evaluate without the last operator
+                    fullExpression = [...expressionParts.slice(0, -1)].join('');
+                } else {
+                    const lastValue = '(' + currentValue + ')';
+                    fullExpression = [...expressionParts, lastValue].join('');
+                }
                 const result = calculate(fullExpression);
                 displayEquation = '';
                 expressionParts = [];
@@ -300,6 +362,18 @@
                 case 'close-paren':
                     inputParen(')');
                     break;
+                case 'mc':
+                    memoryClear();
+                    break;
+                case 'mplus':
+                    memoryStore();
+                    break;
+                case 'mminus':
+                    memorySubtract();
+                    break;
+                case 'mr':
+                    memoryRecall();
+                    break;
                 case 'rad':
                     isRadians = !isRadians;
                     document.getElementById('rad').textContent = isRadians ? 'Deg' : 'Rad';
@@ -371,6 +445,7 @@
 
     // initialize
     document.getElementById('rad').textContent = 'Rad';
+    updateMemoryButton();
     updateDisplay();
 
     document.getElementById('sci-toggle').addEventListener('click', () => {
