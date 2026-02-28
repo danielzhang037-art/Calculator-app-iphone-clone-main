@@ -91,7 +91,6 @@
             clearAll();
             return;
         }
-        
         else if (waitingForSecond) {
             // remove the last operator
             
