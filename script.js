@@ -19,7 +19,10 @@
             .replace(/\//g, '÷')
             .replace(/asin\(/g, 'sin⁻¹(')
             .replace(/acos\(/g, 'cos⁻¹(')
-            .replace(/atan\(/g, 'tan⁻¹(');
+            .replace(/atan\(/g, 'tan⁻¹(')
+            .replace(/asinh\(/g, 'sinh⁻¹(')
+            .replace(/acosh\(/g, 'cosh⁻¹(')
+            .replace(/atanh\(/g, 'tanh⁻¹(');
 
         display.value = toDisplay;
     }
@@ -260,9 +263,15 @@
             const asinFn = isRadians ? Math.asin : (x) => Math.asin(x) * 180 / Math.PI;
             const acosFn = isRadians ? Math.acos : (x) => Math.acos(x) * 180 / Math.PI;
             const atanFn = isRadians ? Math.atan : (x) => Math.atan(x) * 180 / Math.PI;
+            const sinhFn = Math.sinh;
+            const coshFn = Math.cosh;
+            const tanhFn = Math.tanh;
+            const asinhFn = Math.asinh;
+            const acoshFn = Math.acosh;
+            const atanhFn = Math.atanh;
 
-            let result = new Function('sin', 'cos', 'tan', 'asin', 'acos', 'atan',
-                `"use strict"; return (${normalized})`)(sinFn, cosFn, tanFn, asinFn, acosFn, atanFn);
+            let result = new Function('sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
+    `           "use strict"; return (${normalized})`)(sinFn, cosFn, tanFn, asinFn, acosFn, atanFn, sinhFn, coshFn, tanhFn, asinhFn, acoshFn, atanhFn);
 
             if (isNaN(result)) return 'Undefined';
             if (!Number.isFinite(result)) return 'Error';
@@ -384,6 +393,18 @@
                     break;
                 case 'tan':
                     isSecond ? inputTrig('atan') : inputTrig('tan');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'sinh':
+                    isSecond ? inputTrig('asinh') : inputTrig('sinh');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'cosh':
+                    isSecond ? inputTrig('acosh') : inputTrig('cosh');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'tanh':
+                    isSecond ? inputTrig('atanh') : inputTrig('tanh');
                     if (isSecond) { isSecond = false; toggleSecond(); }
                     break;
                 case 'open-paren':
