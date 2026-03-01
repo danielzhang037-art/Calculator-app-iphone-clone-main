@@ -16,6 +16,9 @@
     let logyArgument = '';
     let logyBaseActive = false;
     let logyBase = ''; // stores the base being typed separately
+    let yxActive = false;
+    let yxExponent = '';
+    let yxBaseEntered = false;
 
 
     function toSubscript(str) {
@@ -33,13 +36,67 @@
         return str.split('').map(c => subscriptMap[c] || c).join('');
     }
 
+    function toSuperscript(str) {
+        const superscriptMap = {
+            '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴',
+            '5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹',
+            '+':'⁺','-':'⁻','(':' ⁽',')':'⁾',
+            'a':'ᵃ','b':'ᵇ','c':'ᶜ','d':'ᵈ','e':'ᵉ',
+            'f':'ᶠ','g':'ᵍ','h':'ʰ','i':'ⁱ','j':'ʲ',
+            'k':'ᵏ','l':'ˡ','m':'ᵐ','n':'ⁿ','o':'ᵒ',
+            'p':'ᵖ','q':'ᵍ','r':'ʳ','s':'ˢ','t':'ᵗ',
+            'u':'ᵘ','v':'ᵛ','w':'ʷ','x':'ˣ','y':'ʸ',
+            'z':'ᶻ','π':'ᵖⁱ','.':'·','*':'ˣ','/':'ᐟ'
+        };
+        return str.split('').map(c => superscriptMap[c] || c).join('');
+    }
+
+    function convertSuperscripts(str) {
+        let result = '';
+        let i = 0;
+        while (i < str.length) {
+            if (str[i] === '*' && str[i+1] === '*' && str[i+2] === '(') {
+                i += 3;
+                let depth = 1;
+                let inner = '';
+                while (i < str.length && depth > 0) {
+                    if (str[i] === '(') depth++;
+                    else if (str[i] === ')') {
+                        depth--;
+                        if (depth === 0) { i++; break; }
+                    }
+                    inner += str[i];
+                    i++;
+                }
+                // recursively convert any nested superscripts within the exponent
+                inner = convertSuperscripts(inner);
+                result += toSuperscript(inner);
+            } else {
+                result += str[i];
+                i++;
+            }
+        }
+        // handle trailing **( with no closing paren
+        result = result.replace(/\*\*\((.*)$/, (match, exp) => toSuperscript(convertSuperscripts(exp)));
+        return result;
+    }
+
     function updateDisplay() {
-        let raw = displayEquation + (waitingForSecond ? '' : currentValue);
+        let raw = displayEquation + (waitingForSecond ? '' : currentValue); 
+
+        
+        if (yxActive) {
+            raw = displayEquation + currentValue + toSuperscript(yxExponent);
+        }
 
         if (logyActive) {
             const subscriptBase = toSubscript(logyBase || '');
             raw = raw.replace(/log\(/, 'log' + subscriptBase + '(');
         }
+        
+
+        // convert superscripts first using paren-aware function
+        raw = convertSuperscripts(raw);
 
         const toDisplay = raw
             .replace(/\*/g, '×')
@@ -53,8 +110,14 @@
             .replace(/log10\(/g, 'log₁₀(')
             .replace(/log2\(/g, 'log₂(')
             .replace(/logy\(([^,]+),/g, (match, base) => 'log' + toSubscript(base) + '(')
-            .replace(/\)(?=\s*$)/, ')');
+            .replace(new RegExp(`\\(${Math.E.toString().replace('.', '\\.')}\\)`, 'g'), 'e')
+            .replace(/10\*\*/g, '10')
+            .replace(/2\*\*/g, '2');
         display.value = toDisplay;
+    }
+
+    function updateYxButton() {
+        document.getElementById('ex').style.backgroundColor = yxActive ? '#a0a0a0' : '';
     }
 
     function endsWithOperator(str) {
@@ -71,6 +134,13 @@
     }
 
     function inputDigit(digit) {
+        if (yxActive) {
+            currentValue += digit;
+            yxBaseEntered = true;
+            updateDisplay();
+            return;
+        }
+
         if (logyBaseActive) {
             const openCount = (logyBase.match(/\(/g) || []).length;
             const closeCount = (logyBase.match(/\)/g) || []).length;
@@ -191,6 +261,16 @@
     }
 
     function inputConstant(value, symbol) {
+        if (yxActive) {
+            if (currentValue === '0') {
+                currentValue = symbol;
+            } else {
+                currentValue += symbol;
+            }
+            yxBaseEntered = true;
+            updateDisplay();
+            return;
+        }
         if (logyBaseActive) {
             logyBase += symbol;
             updateDisplay();
@@ -218,6 +298,16 @@
 
     function inputTrig(func) {
         const append = func + '(';
+        if (yxActive) {
+            if (currentValue === '0') {
+                currentValue = func + '(';
+            } else {
+                currentValue += func + '(';
+            }
+            yxBaseEntered = true;
+            updateDisplay();
+            return;
+        }
         if (logyBaseActive) {
             logyBase += append;
             updateDisplay();
@@ -273,8 +363,50 @@
         updateDisplay();
     }
 
+    function inputExp(base) {
+        const baseStr = base === 'e' ? `(${Math.E})` : base === 'y' ? '' : base;
 
-    function inputParen(paren) {
+        if (currentValue.endsWith('**(')) {
+            if (base !== 'y') {
+                currentValue += baseStr + '**(';
+            }
+            updateDisplay();
+            return;
+        }
+
+        if (base === 'y') {
+            if (waitingForSecond && expressionParts.length > 0) {
+                expressionParts.pop();
+                const lastTerm = expressionParts.pop();
+                const cleanTerm = lastTerm.replace(/^\(|\)$/g, '');
+                displayEquation = displayEquation.slice(0, -(cleanTerm.length + 1));
+                yxExponent = cleanTerm;
+                waitingForSecond = false;
+                operator = null;
+            } else {
+                yxExponent = currentValue;
+            }
+            yxActive = true;
+            yxBaseEntered = false;
+            currentValue = '';
+            waitingForSecond = false;
+            updateYxButton();
+        } else {
+            currentValue = baseStr + '**(' + currentValue + ')';
+            if (waitingForSecond && expressionParts.length > 0) {
+                expressionParts.pop();
+                const lastTerm = expressionParts.pop();
+                const cleanTerm = lastTerm.replace(/^\(|\)$/g, '');
+                displayEquation = displayEquation.slice(0, -(cleanTerm.length + 1));
+                currentValue = baseStr + '**(' + cleanTerm + ')';
+                waitingForSecond = false;
+                operator = null;
+            }
+        }
+        updateDisplay();
+    }
+
+   function inputParen(paren) {
         if (logyBaseActive) {
             logyBase += paren;
             updateDisplay();
@@ -293,6 +425,16 @@
                 logyBase = '';
                 logyBaseActive = true;
                 updateLogyButton();
+            }
+        }
+        // detect y^x exponent closed
+        if (paren === ')' && currentValue.includes('**(')) {
+            const openCount = (currentValue.match(/\(/g) || []).length;
+            const closeCount = (currentValue.match(/\)/g) || []).length;
+            if (openCount === closeCount && currentValue.startsWith('**(')) {
+                yxActive = true;
+                yxExponent = currentValue;
+                currentValue = yxExponent;
             }
         }
         updateDisplay();
@@ -368,6 +510,10 @@
         logyArgument = '';
         logyBase = '';
         logyBaseActive = false;
+        yxActive = false;
+        yxExponent = '';
+        yxBaseEntered = false;
+        updateYxButton();
         updateLogyButton();
         updateDisplay();
     }
@@ -447,6 +593,28 @@
     }
 
     function handleOperator(nextOperator) {
+        if (yxActive) {
+            if (!yxBaseEntered) {
+                // no base entered — just break out, superscript becomes normal
+                yxActive = false;
+                yxExponent = '';
+                yxBaseEntered = false;
+                updateYxButton();
+                // don't change currentValue, just proceed normally
+            } else {
+                // base entered — commit and break out
+                const openCount = (currentValue.match(/\(/g) || []).length;
+                const closeCount = (currentValue.match(/\)/g) || []).length;
+                if (openCount === closeCount) {
+                    currentValue = '(' + currentValue + ')**(' + yxExponent + ')';
+                    yxActive = false;
+                    yxExponent = '';
+                    yxBaseEntered = false;
+                    updateYxButton();
+                }
+                // if parens unclosed, don't break out
+            }
+        }
         if (logyBaseActive) {
             const base = logyBase || '10';
             // extract argument from log( ... )
@@ -473,6 +641,22 @@
             }
         }
         if (nextOperator === '=') {
+            if (yxActive && !yxBaseEntered) {
+                currentValue = 'Error';
+                yxActive = false;
+                yxExponent = '';
+                yxBaseEntered = false;
+                updateYxButton();
+                updateDisplay();
+                return;
+            }
+            if (yxActive && yxBaseEntered) {
+                currentValue = '(' + currentValue + ')**(' + yxExponent + ')';
+                yxActive = false;
+                yxExponent = '';
+                yxBaseEntered = false;
+                updateYxButton();
+            }
             if (expressionParts.length > 0 || currentValue !== '0') {
                 let fullExpression;
                 if (waitingForSecond) {
@@ -617,6 +801,14 @@
                     break;
                 case 'log':
                     isSecond ? inputTrig('log2') : inputTrig('log10');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'ex':
+                    isSecond ? inputExp('y') : inputExp('e');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'tenx':
+                    isSecond ? inputExp('2') : inputExp('10');
                     if (isSecond) { isSecond = false; toggleSecond(); }
                     break;
                 default:
