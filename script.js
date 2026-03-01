@@ -16,7 +16,11 @@
     function updateDisplay() {
         const toDisplay = (displayEquation + (waitingForSecond ? '' : currentValue))
             .replace(/\*/g, '×')
-            .replace(/\//g, '÷');
+            .replace(/\//g, '÷')
+            .replace(/asin\(/g, 'sin⁻¹(')
+            .replace(/acos\(/g, 'cos⁻¹(')
+            .replace(/atan\(/g, 'tan⁻¹(');
+
         display.value = toDisplay;
     }
 
@@ -245,14 +249,22 @@
                 .replace(/(?<![a-zA-Z])e(?![a-zA-Z])/g, `(${Math.E})`)
                 .replace(/sin\(/g, 'sin(')
                 .replace(/cos\(/g, 'cos(')
-                .replace(/tan\(/g, 'tan(');
+                .replace(/tan\(/g, 'tan(')
+                .replace(/asin\(/g, 'asin(')
+                .replace(/acos\(/g, 'acos(')
+                .replace(/atan\(/g, 'atan(');
 
             const sinFn = isRadians ? Math.sin : (x) => Math.sin(x * Math.PI / 180);
             const cosFn = isRadians ? Math.cos : (x) => Math.cos(x * Math.PI / 180);
             const tanFn = isRadians ? Math.tan : (x) => Math.tan(x * Math.PI / 180);
+            const asinFn = isRadians ? Math.asin : (x) => Math.asin(x) * 180 / Math.PI;
+            const acosFn = isRadians ? Math.acos : (x) => Math.acos(x) * 180 / Math.PI;
+            const atanFn = isRadians ? Math.atan : (x) => Math.atan(x) * 180 / Math.PI;
 
-            let result = new Function('sin', 'cos', 'tan', `"use strict"; return (${normalized})`)(sinFn, cosFn, tanFn);
+            let result = new Function('sin', 'cos', 'tan', 'asin', 'acos', 'atan',
+                `"use strict"; return (${normalized})`)(sinFn, cosFn, tanFn, asinFn, acosFn, atanFn);
 
+            if (isNaN(result)) return 'Undefined';
             if (!Number.isFinite(result)) return 'Error';
             if (Math.abs(result) > 1e15) return 'Error';
             if (Math.abs(result - Math.round(result)) < 1e-9) {
@@ -363,13 +375,16 @@
                     toggleSign();
                     break;
                 case 'sin':
-                    inputTrig('sin');
+                    isSecond ? inputTrig('asin') : inputTrig('sin');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
                     break;
                 case 'cos':
-                    inputTrig('cos');
+                    isSecond ? inputTrig('acos') : inputTrig('cos');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
                     break;
                 case 'tan':
-                    inputTrig('tan');
+                    isSecond ? inputTrig('atan') : inputTrig('tan');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
                     break;
                 case 'open-paren':
                     inputParen('(');
