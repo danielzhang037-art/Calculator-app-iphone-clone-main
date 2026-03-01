@@ -9,6 +9,8 @@
     let displayEquation = '';
     let expressionParts = [];
     let isRadians = false;
+    let parenOpen = false;
+    
     const MAX_LENGTH = 12;
     let memory = null;
     let isSecond = false;
@@ -166,6 +168,7 @@
         if (waitingForSecond) {
             currentValue = digit;
             waitingForSecond = false;
+            
         } else if (currentValue === 'π' || currentValue === 'e') {
             expressionParts.push('(' + currentValue + ')', '*');
             displayEquation = displayEquation + currentValue + '×';
@@ -237,7 +240,13 @@
     }
 
     function inputBackspace() {
-        if (waitingForSecond) {
+        if(display.value === 'Error'){
+            clearAll();
+            return;
+        }
+        else if (waitingForSecond) {
+            // remove the last operator
+            
             expressionParts.pop();
             displayEquation = displayEquation.slice(0, -1);
             operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
@@ -246,6 +255,9 @@
             currentValue = popped.replace(/^\(|\)$/g, '');
             displayEquation = displayEquation.slice(0, -(currentValue.length));
         } else if (currentValue.length > 1) {
+            if(currentValue.slice(-1) === '('){
+                parenOpen = false;
+            }
             currentValue = currentValue.slice(0, -1);
         } else if (expressionParts.length > 0) {
             expressionParts.pop();
@@ -406,7 +418,10 @@
         updateDisplay();
     }
 
+   
+        
    function inputParen(paren) {
+     const lastChar = currentValue[currentValue.length - 1];
         if (logyBaseActive) {
             logyBase += paren;
             updateDisplay();
@@ -414,8 +429,23 @@
         }
         if (currentValue === '0' && paren === '(') {
             currentValue = '(';
-        } else {
+            parenOpen = true;
+        } 
+        else if(paren === ')' && parenOpen === false ){
+            return;
+        }
+        else if(paren ==')' && (lastChar === '('|| ['+','-','*','/'].includes(lastChar))){
+            return;
+        }
+        
+        else if(parenOpen === false){
             currentValue += paren;
+            parenOpen = true;
+        }
+
+        else if(parenOpen === true && paren === ')' ){
+            currentValue += paren;
+            parenOpen = false;
         }
         if (logyActive && paren === ')') {
             const openCount = (currentValue.match(/\(/g) || []).length;
@@ -506,6 +536,7 @@
         currentValue = '0';
         displayEquation = '';
         expressionParts = [];
+        parenOpen = false;
         logyActive = false;
         logyArgument = '';
         logyBase = '';
@@ -715,6 +746,7 @@
                 case 'e':
                     inputConstant(Math.E.toString(), 'e');
                     break;
+
                 case 'decimal':
                     inputDecimal();
                     break;
