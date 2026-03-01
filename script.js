@@ -12,9 +12,36 @@
     const MAX_LENGTH = 12;
     let memory = null;
     let isSecond = false;
+    let logyActive = false;
+    let logyArgument = '';
+    let logyBaseActive = false;
+    let logyBase = ''; // stores the base being typed separately
+
+
+    function toSubscript(str) {
+        const subscriptMap = {
+            '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄',
+            '5':'₅','6':'₆','7':'₇','8':'₈','9':'₉',
+            '+':'₊','-':'₋','(':' ₍',')':'₎',
+            'a':'ₐ','b':'ᵦ','c':'꜀','d':'ᵈ','e':'ₑ',
+            'f':'ᶠ','g':'ᵍ','h':'ₕ','i':'ᵢ','j':'ⱼ',
+            'k':'ₖ','l':'ₗ','m':'ₘ','n':'ₙ','o':'ₒ',
+            'p':'ₚ','q':'ᵩ','r':'ᵣ','s':'ₛ','t':'ₜ',
+            'u':'ᵤ','v':'ᵥ','w':'ᵥᵥ','x':'ₓ','y':'ᵧ',
+            'z':'ᵤ','π':'π','.':'.','*':'×','/':'÷'
+        };
+        return str.split('').map(c => subscriptMap[c] || c).join('');
+    }
 
     function updateDisplay() {
-        const toDisplay = (displayEquation + (waitingForSecond ? '' : currentValue))
+        let raw = displayEquation + (waitingForSecond ? '' : currentValue);
+
+        if (logyActive) {
+            const subscriptBase = toSubscript(logyBase || '');
+            raw = raw.replace(/log\(/, 'log' + subscriptBase + '(');
+        }
+
+        const toDisplay = raw
             .replace(/\*/g, '×')
             .replace(/\//g, '÷')
             .replace(/asin\(/g, 'sin⁻¹(')
@@ -22,8 +49,11 @@
             .replace(/atan\(/g, 'tan⁻¹(')
             .replace(/asinh\(/g, 'sinh⁻¹(')
             .replace(/acosh\(/g, 'cosh⁻¹(')
-            .replace(/atanh\(/g, 'tanh⁻¹(');
-
+            .replace(/atanh\(/g, 'tanh⁻¹(')
+            .replace(/log10\(/g, 'log₁₀(')
+            .replace(/log2\(/g, 'log₂(')
+            .replace(/logy\(([^,]+),/g, (match, base) => 'log' + toSubscript(base) + '(')
+            .replace(/\)(?=\s*$)/, ')');
         display.value = toDisplay;
     }
 
@@ -41,6 +71,28 @@
     }
 
     function inputDigit(digit) {
+        if (logyBaseActive) {
+            const openCount = (logyBase.match(/\(/g) || []).length;
+            const closeCount = (logyBase.match(/\)/g) || []).length;
+            if (logyBase === '' || openCount === closeCount) {
+                logyBase += digit;
+            } else {
+                logyBase += digit;
+            }
+            updateDisplay();
+            return;
+        }
+
+        if (logyActive && logyArgument !== '' && !endsWithOperator(currentValue) && !currentValue.endsWith('(')) {
+            const openCount = (currentValue.match(/\(/g) || []).length;
+            const closeCount = (currentValue.match(/\)/g) || []).length;
+            if (openCount === closeCount) {
+                currentValue += digit;
+                updateDisplay();
+                return;
+            }
+        }
+
         if (waitingForSecond) {
             currentValue = digit;
             waitingForSecond = false;
@@ -65,6 +117,14 @@
     }
 
     function inputDecimal() {
+        
+        if (logyBaseActive) {
+            if (!logyBase.includes('.')) {
+                logyBase += '.';
+            }
+            updateDisplay();
+            return;
+        }
         if (waitingForSecond) {
             currentValue = '0.';
             waitingForSecond = false;
@@ -87,10 +147,23 @@
     }
 
     function inputPercent() {
-        if (!currentValue.includes('%')) {
-            currentValue = currentValue + '%';
-            updateDisplay();
+        if (logyActive && logyArgument === '') {
+            logyActive = false;
+            logyBaseActive = false;
+            updateLogyButton();
         }
+        if (logyBaseActive) {
+            logyActive = false;
+            logyArgument = '';
+            logyBaseActive = false;
+            updateLogyButton();
+        }
+        if (currentValue.endsWith('%') || /[a-z]/.test(currentValue)) {
+            currentValue = '(' + currentValue + ')%';
+        } else {
+            currentValue = currentValue + '%';
+        }
+        updateDisplay();
     }
 
     function inputBackspace() {
@@ -118,6 +191,11 @@
     }
 
     function inputConstant(value, symbol) {
+        if (logyBaseActive) {
+            logyBase += symbol;
+            updateDisplay();
+            return;
+        }
         if (waitingForSecond) {
             currentValue = symbol;
             waitingForSecond = false;
@@ -139,28 +217,83 @@
     }
 
     function inputTrig(func) {
+        const append = func + '(';
+        if (logyBaseActive) {
+            logyBase += append;
+            updateDisplay();
+            return;
+        }
         if (waitingForSecond) {
-            currentValue = func + '(';
+            currentValue = append;
             waitingForSecond = false;
         } else if (currentValue === '0') {
-            currentValue = func + '(';
+            currentValue = append;
         } else if (currentValue.endsWith('(') || endsWithOperator(currentValue)) {
-            currentValue += func + '(';
+            currentValue += append;
         } else {
             expressionParts.push('(' + currentValue + ')', '*');
             displayEquation = displayEquation + currentValue + '×';
             operator = '*';
-            currentValue = func + '(';
+            currentValue = append;
             waitingForSecond = false;
         }
         updateDisplay();
     }
 
+    function inputLog(func) {
+        if (func === 'logy') {
+            logyActive = true;
+            logyArgument = '';
+            logyBase = '';
+            logyBaseActive = false;
+            updateLogyButton();
+            const append = 'log(';
+            if (waitingForSecond) {
+                currentValue = append;
+                waitingForSecond = false;
+            } else if (currentValue === '0') {
+                currentValue = append;
+            } else if (currentValue.endsWith('(') || endsWithOperator(currentValue)) {
+                currentValue += append;
+            } else {
+                expressionParts.push('(' + currentValue + ')', '*');
+                displayEquation = displayEquation + currentValue + '×';
+                operator = '*';
+                currentValue = append;
+                waitingForSecond = false;
+            }
+        } else {
+            if (logyBaseActive) {
+                logyBase += func + '(';
+                updateDisplay();
+                return;
+            }
+            inputTrig(func);
+        }
+        updateDisplay();
+    }
+
+
     function inputParen(paren) {
+        if (logyBaseActive) {
+            logyBase += paren;
+            updateDisplay();
+            return;
+        }
         if (currentValue === '0' && paren === '(') {
             currentValue = '(';
         } else {
             currentValue += paren;
+        }
+        if (logyActive && paren === ')') {
+            const openCount = (currentValue.match(/\(/g) || []).length;
+            const closeCount = (currentValue.match(/\)/g) || []).length;
+            if (openCount === closeCount) {
+                logyArgument = currentValue;
+                logyBase = '';
+                logyBaseActive = true;
+                updateLogyButton();
+            }
         }
         updateDisplay();
     }
@@ -169,6 +302,11 @@
         const mrBtn = document.getElementById('mr');
         mrBtn.style.backgroundColor = memory !== null ? '#a0a0a0' : '';
     }
+
+    function updateLogyButton() {
+        document.getElementById('ln').style.backgroundColor = logyBaseActive ? '#a0a0a0' : '';
+    }
+
 
     function memoryStore() {
         // evaluate current expression first
@@ -226,6 +364,11 @@
         currentValue = '0';
         displayEquation = '';
         expressionParts = [];
+        logyActive = false;
+        logyArgument = '';
+        logyBase = '';
+        logyBaseActive = false;
+        updateLogyButton();
         updateDisplay();
     }
 
@@ -246,7 +389,11 @@
 
     function calculate(expression) {
         try {
+            expression = expression.replace(/logy\(([^,]+),([^)]+(?:\([^)]*\)[^)]*)*)\)/g, 
+                (match, base, arg) => `(Math.log(${arg})/Math.log(${base}))`);
+            expression = expression.replace(/log\(([^)]+)\)/g, 'log10($1)');
             const normalized = expression
+                .replace(/\(([^()]*(?:\([^()]*\)[^()]*)*)\)%/g, '(($1)/100)')
                 .replace(/(\d+\.?\d*)%/g, '($1/100)')
                 .replace(/π/g, `(${Math.PI})`)
                 .replace(/(?<![a-zA-Z])e(?![a-zA-Z])/g, `(${Math.E})`)
@@ -256,6 +403,7 @@
                 .replace(/asin\(/g, 'asin(')
                 .replace(/acos\(/g, 'acos(')
                 .replace(/atan\(/g, 'atan(');
+
 
             const sinFn = isRadians ? Math.sin : (x) => Math.sin(x * Math.PI / 180);
             const cosFn = isRadians ? Math.cos : (x) => Math.cos(x * Math.PI / 180);
@@ -270,8 +418,13 @@
             const acoshFn = Math.acosh;
             const atanhFn = Math.atanh;
 
-            let result = new Function('sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
-    `           "use strict"; return (${normalized})`)(sinFn, cosFn, tanFn, asinFn, acosFn, atanFn, sinhFn, coshFn, tanhFn, asinhFn, acoshFn, atanhFn);
+            const lnFn = Math.log;
+            const log10Fn = Math.log10;
+            const log2Fn = Math.log2;
+            const logyFn = (base, x) => Math.log(x) / Math.log(base);
+
+            let result = new Function('sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'ln', 'log10', 'log2', 'logy',
+    `           "use strict"; return (${normalized})`)(sinFn, cosFn, tanFn, asinFn, acosFn, atanFn, sinhFn, coshFn, tanhFn, asinhFn, acoshFn, atanhFn, lnFn, log10Fn, log2Fn, logyFn);
 
             if (isNaN(result)) return 'Undefined';
             if (!Number.isFinite(result)) return 'Error';
@@ -294,6 +447,31 @@
     }
 
     function handleOperator(nextOperator) {
+        if (logyBaseActive) {
+            const base = logyBase || '10';
+            // extract argument from log( ... )
+            const argMatch = logyArgument.match(/^log\((.+)\)$/);
+            const arg = argMatch ? argMatch[1] : logyArgument;
+            currentValue = `logy(${base},${arg})`;
+            logyActive = false;
+            logyArgument = '';
+            logyBase = '';
+            logyBaseActive = false;
+            updateLogyButton();
+        }
+        if (logyActive && logyArgument !== '') {
+            const openCount = (currentValue.match(/\(/g) || []).length;
+            const closeCount = (currentValue.match(/\)/g) || []).length;
+            if (openCount === closeCount && !['+', '-', '*', '/'].includes(nextOperator)) {
+                // only exit if parens are balanced and it's a real operator
+            }
+            if (openCount === closeCount) {
+                logyActive = false;
+                logyArgument = '';
+                logyBaseActive = false;
+                updateLogyButton();
+            }
+        }
         if (nextOperator === '=') {
             if (expressionParts.length > 0 || currentValue !== '0') {
                 let fullExpression;
@@ -431,6 +609,15 @@
                 case 'rad':
                     isRadians = !isRadians;
                     document.getElementById('rad').textContent = isRadians ? 'Deg' : 'Rad';
+                    break;
+
+                case 'ln':
+                    isSecond ? inputLog('logy') : inputTrig('ln');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'log':
+                    isSecond ? inputTrig('log2') : inputTrig('log10');
+                    if (isSecond) { isSecond = false; toggleSecond(); }
                     break;
                 default:
                     break;
