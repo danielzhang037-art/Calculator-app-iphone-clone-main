@@ -10,6 +10,7 @@
     let expressionParts = [];
     let isRadians = false;
     let parenOpen = false;
+    
     const MAX_LENGTH = 12;
 
     function updateDisplay() {
@@ -159,11 +160,15 @@
     }
 
     function inputParen(paren) {
+        const lastChar = currentValue[currentValue.length - 1];
         if (currentValue === '0' && paren === '(') {
             currentValue = '(';
             parenOpen = true;
         } 
-        if(paren === ')' && parenOpen === false ){
+        else if(paren === ')' && parenOpen === false ){
+            return;
+        }
+        else if(paren ==')' && (lastChar === '('|| ['+','-','*','/'].includes(lastChar))){
             return;
         }
         
