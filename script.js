@@ -237,6 +237,7 @@
     }
 
     function inputBackspace() {
+
         if (waitingForSecond) {
             expressionParts.pop();
             displayEquation = displayEquation.slice(0, -1);
@@ -254,7 +255,10 @@
             const popped = expressionParts.pop() || '0';
             currentValue = popped.replace(/^\(|\)$/g, '');
             displayEquation = displayEquation.slice(0, -(currentValue.length));
-        } else {
+            
+        }
+        
+        else {
             currentValue = '0';
         }
         updateDisplay();
@@ -405,6 +409,24 @@
         }
         updateDisplay();
     }
+    function powers(number){
+        if(number === '2'){
+            currentValue = currentValue + '**(2';
+            inputParen(')');
+            updateDisplay();
+        }
+        else if (number === '3'){
+            currentValue = currentValue + '**(3';
+            inputParen(')');
+            updateDisplay();
+        }
+        else if(number === 'y'){
+            currentValue = currentValue + '**(';
+        }
+
+        
+    }
+
 
    function inputParen(paren) {
         if (logyBaseActive) {
@@ -810,6 +832,15 @@
                 case 'tenx':
                     isSecond ? inputExp('2') : inputExp('10');
                     if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'sq':
+                    powers('2');
+                    break;
+                case 'cube':
+                    powers('3');
+                    break;
+                case 'pow':
+                    powers('y')
                     break;
                 default:
                     break;
