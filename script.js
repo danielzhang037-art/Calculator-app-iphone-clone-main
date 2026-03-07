@@ -529,6 +529,31 @@
         updateDisplay();
     }
 
+    function inputRand() {
+        const rand = parseFloat(Math.random().toFixed(8)).toString();
+        if (waitingForSecond) {
+            currentValue = rand;
+            waitingForSecond = false;
+        } else if (currentValue === '0') {
+            currentValue = rand;
+        } else if (currentValue.endsWith('(') || endsWithOperator(currentValue)) {
+            currentValue += rand;
+        } else if (yxActive) {
+            currentValue += rand;
+            yxBaseEntered = true;
+        } else if (logyBaseActive) {
+            logyBase += rand;
+        } else {
+            // number already on screen — auto insert multiply
+            expressionParts.push('(' + currentValue + ')', '*');
+            displayEquation = displayEquation + currentValue + '×';
+            operator = '*';
+            currentValue = rand;
+            waitingForSecond = false;
+        }
+        updateDisplay();
+    }
+
     function clearAll() {
         firstValue = null;
         operator = null;
@@ -842,6 +867,9 @@
                 case 'tenx':
                     isSecond ? inputExp('2') : inputExp('10');
                     if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'rand':
+                    inputRand();
                     break;
                 default:
                     break;
