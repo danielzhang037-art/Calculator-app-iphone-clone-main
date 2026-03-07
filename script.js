@@ -470,6 +470,11 @@
         updateDisplay();
     }
 
+    function inputFactorial() {
+        currentValue = currentValue + '!';
+        updateDisplay();
+    }
+
     function updateMemoryButton() {
         const mrBtn = document.getElementById('mr');
         mrBtn.style.backgroundColor = memory !== null ? '#a0a0a0' : '';
@@ -554,6 +559,40 @@
         updateDisplay();
     }
 
+    function factorial(n) {
+        if (n < 0 && Number.isInteger(n)) return NaN; // negative integers are undefined
+        if (n === 0 || n === 1) return 1;
+        if (Number.isInteger(n) && n > 0) {
+            let result = 1;
+            for (let i = 2; i <= n; i++) result *= i;
+            return result;
+        }
+        // for non-integers, use Lanczos approximation of gamma function
+        return gamma(n + 1);
+    }
+
+    function gamma(n) {
+        // Lanczos approximation
+        if (n < 0.5) return Math.PI / (Math.sin(Math.PI * n) * gamma(1 - n));
+        n -= 1;
+        const g = 7;
+        const c = [
+            0.99999999999980993,
+            676.5203681218851,
+            -1259.1392167224028,
+            771.32342877765313,
+            -176.61502916214059,
+            12.507343278686905,
+            -0.13857109526572012,
+            9.9843695780195716e-6,
+            1.5056327351493116e-7
+        ];
+        let x = c[0];
+        for (let i = 1; i < g + 2; i++) x += c[i] / (n + i);
+        const t = n + g + 0.5;
+        return Math.sqrt(2 * Math.PI) * Math.pow(t, n + 0.5) * Math.exp(-t) * x;
+    }
+
     function clearAll() {
         firstValue = null;
         operator = null;
@@ -594,6 +633,12 @@
             expression = expression.replace(/logy\(([^,]+),([^)]+(?:\([^)]*\)[^)]*)*)\)/g, 
                 (match, base, arg) => `(Math.log(${arg})/Math.log(${base}))`);
             expression = expression.replace(/log\(([^)]+)\)/g, 'log10($1)');
+            expression = expression.replace(/(-?)(\d+(?:\.\d+)?)!/g, (match, sign, num) => {
+                return sign + 'factorial(' + num + ')';
+            });
+            // handle (expr)! — entire expression in parens
+            expression = expression.replace(/\(([^)]+)\)!/g, 'factorial($1)');
+
             const normalized = expression
                 .replace(/\(([^()]*(?:\([^()]*\)[^()]*)*)\)%/g, '(($1)/100)')
                 .replace(/(\d+\.?\d*)%/g, '($1/100)')
@@ -625,8 +670,8 @@
             const log2Fn = Math.log2;
             const logyFn = (base, x) => Math.log(x) / Math.log(base);
 
-            let result = new Function('sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'ln', 'log10', 'log2', 'logy',
-    `           "use strict"; return (${normalized})`)(sinFn, cosFn, tanFn, asinFn, acosFn, atanFn, sinhFn, coshFn, tanhFn, asinhFn, acoshFn, atanhFn, lnFn, log10Fn, log2Fn, logyFn);
+            let result = new Function('sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh', 'ln', 'log10', 'log2', 'logy','factorial',
+    `           "use strict"; return (${normalized})`)(sinFn, cosFn, tanFn, asinFn, acosFn, atanFn, sinhFn, coshFn, tanhFn, asinhFn, acoshFn, atanhFn, lnFn, log10Fn, log2Fn, logyFn, factorial);
 
             if (isNaN(result)) return 'Undefined';
             if (!Number.isFinite(result)) return 'Error';
@@ -871,6 +916,9 @@
                 case 'rand':
                     inputRand();
                     break;
+                case 'fact':
+                    inputFactorial();
+                    break;
                 default:
                     break;
             }
@@ -931,6 +979,11 @@
         }
         if (e.key === ')') {
             inputParen(')');
+            e.preventDefault();
+            return;
+        }
+        if (e.key === '!') {
+            inputFactorial();
             e.preventDefault();
             return;
         }
