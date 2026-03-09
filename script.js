@@ -237,8 +237,13 @@
     }
 
     function inputBackspace() {
+        if(currentValue.endsWith('**(')){
+            currentValue = currentValue.slice(0,-3);
+            yxActive = false;
+            
+        }
 
-        if (waitingForSecond) {
+        else if (waitingForSecond) {
             expressionParts.pop();
             displayEquation = displayEquation.slice(0, -1);
             operator = expressionParts.length > 0 ? expressionParts[expressionParts.length - 1] : null;
@@ -721,6 +726,7 @@
 
         updateDisplay();
     }
+    
 
     // attach button listeners
     buttons.forEach(btn => {
