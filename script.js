@@ -591,6 +591,34 @@
             return 'Error';
         }
     }
+    function root(base){
+        if (currentValue === '0' && expressionParts.length === 0) return; //
+
+        const rootExp = `(${currentValue})**(1/${base})`;
+
+        if (waitingForSecond && expressionParts.length > 0) {
+
+            expressionParts.pop();
+            const lastTerm = expressionParts.pop();
+
+            const cleanTerm = lastTerm.replace(/^\(|\)$/g, '');
+
+            displayEquation = displayEquation.slice(0, -(cleanTerm.length + 1));
+
+            currentValue = `(${cleanTerm})**(1/${base})`;
+
+            waitingForSecond = false;
+            operator = null;
+
+        } 
+        else {
+
+        currentValue = rootExp;
+
+    }
+
+    updateDisplay();
+    }
 
     function handleOperator(nextOperator) {
         if (yxActive) {
@@ -810,6 +838,12 @@
                 case 'tenx':
                     isSecond ? inputExp('2') : inputExp('10');
                     if (isSecond) { isSecond = false; toggleSecond(); }
+                    break;
+                case 'sqrt':
+                    root('2');
+                    break;
+                case 'cbrt':
+                    root('3');
                     break;
                 default:
                     break;
